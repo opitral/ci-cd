@@ -1,0 +1,115 @@
+name: CI/CD Pipeline
+
+# Full pipeline: static analysis -> tests -> build JAR -> publish artifact.
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
+
+jobs:
+  # 1. Static code analysis (code-style compliance).
+  static-analysis:
+    name: Static analysis (Checkstyle)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Run Checkstyle
+        run: ./gradlew checkstyleMain checkstyleTest
+      - name: Upload Checkstyle reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-reports
+          path: build/reports/checkstyle/
+
+  # 2. Automated testing — the two tag-based test sets run separately.
+  test:
+    name: Automated tests
+    needs: static-analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Run unit test set (@Tag "unit")
+        run: ./gradlew test
+      - name: Run integration test set (@Tag "integration")
+        # CI=true is set by GitHub Actions, so the assumption-gated end-to-end
+        # test actually runs here (it is skipped on a local machine).
+        run: ./gradlew integrationTest
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: build/reports/tests/
+
+  # 3. Build the project into a runnable JAR.
+  build:
+    name: Build JAR
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Assemble JAR
+        run: ./gradlew jar
+      - name: Upload JAR as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: build/libs/*.jar
+          if-no-files-found: error
+
+  # 4. Deploy / publish the artifact: push the JAR to GitHub Packages.
+  #    Runs only on pushes to main (not on pull requests).
+  publish:
+    name: Publish JAR to GitHub Packages
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Publish to GitHub Packages
+        run: ./gradlew publish
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
