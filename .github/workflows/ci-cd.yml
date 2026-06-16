@@ -108,7 +108,19 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Publish to GitHub Packages
-        run: ./gradlew publish
+        # Idempotent publish: a 409 Conflict means this version is already
+        # published (e.g. on a re-run), which is treated as success — any other
+        # failure still fails the job.
+        run: |
+          set -o pipefail
+          if ./gradlew publish 2>&1 | tee publish.log; then
+            echo "Published successfully."
+          elif grep -q "status code 409 from server: Conflict" publish.log; then
+            echo "::notice::Version already published — nothing to do (idempotent re-run)."
+          else
+            echo "::error::Publish failed."
+            exit 1
+          fi
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
