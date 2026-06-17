@@ -1,6 +1,5 @@
 name: CI/CD Pipeline
 
-# Full pipeline: static analysis -> tests -> build JAR -> publish artifact.
 on:
   push:
     branches: [ main ]
@@ -16,7 +15,6 @@ env:
   JAVA_DISTRIBUTION: 'temurin'
 
 jobs:
-  # 1. Static code analysis (code-style compliance).
   static-analysis:
     name: Static analysis (Checkstyle)
     runs-on: ubuntu-latest
@@ -38,7 +36,6 @@ jobs:
           name: checkstyle-reports
           path: build/reports/checkstyle/
 
-  # 2. Automated testing — the two tag-based test sets run separately.
   test:
     name: Automated tests
     needs: static-analysis
@@ -55,8 +52,6 @@ jobs:
       - name: Run unit test set (@Tag "unit")
         run: ./gradlew test
       - name: Run integration test set (@Tag "integration")
-        # CI=true is set by GitHub Actions, so the assumption-gated end-to-end
-        # test actually runs here (it is skipped on a local machine).
         run: ./gradlew integrationTest
       - name: Upload test reports
         if: always()
@@ -65,7 +60,6 @@ jobs:
           name: test-reports
           path: build/reports/tests/
 
-  # 3. Build the project into a runnable JAR.
   build:
     name: Build JAR
     needs: test
@@ -88,8 +82,6 @@ jobs:
           path: build/libs/*.jar
           if-no-files-found: error
 
-  # 4. Deploy / publish the artifact: push the JAR to GitHub Packages.
-  #    Runs only on pushes to main (not on pull requests).
   publish:
     name: Publish JAR to GitHub Packages
     needs: build
@@ -108,9 +100,6 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Publish to GitHub Packages
-        # Idempotent publish: a 409 Conflict means this version is already
-        # published (e.g. on a re-run), which is treated as success — any other
-        # failure still fails the job.
         run: |
           set -o pipefail
           if ./gradlew publish 2>&1 | tee publish.log; then

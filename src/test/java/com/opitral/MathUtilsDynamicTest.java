@@ -10,9 +10,6 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestFactory;
 
-/**
- * Dynamic tests generated at runtime via {@code @TestFactory}.
- */
 @Tag("unit")
 @DisplayName("MathUtils — dynamic tests")
 class MathUtilsDynamicTest {

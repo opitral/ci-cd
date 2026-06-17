@@ -9,16 +9,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/**
- * Parameterized tests with static parameter sources.
- */
 @Tag("unit")
 @DisplayName("MathUtils — parameterized tests")
 class MathUtilsParameterizedTest {
 
-    /**
-     * Parameterized test with a single static parameter ({@code @ValueSource}).
-     */
     @ParameterizedTest(name = "{0} is prime")
     @ValueSource(ints = {2, 3, 5, 7, 11, 13, 17, 19})
     @DisplayName("known primes are reported as prime")
@@ -26,9 +20,6 @@ class MathUtilsParameterizedTest {
         assertTrue(MathUtils.isPrime(candidate));
     }
 
-    /**
-     * Parameterized test with a set of static parameters ({@code @CsvSource}).
-     */
     @ParameterizedTest(name = "gcd({0}, {1}) == {2}")
     @CsvSource({
         "48, 36, 12",

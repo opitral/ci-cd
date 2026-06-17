@@ -30,27 +30,16 @@ application {
     mainClass = 'com.opitral.Main'
 }
 
-// ---------------------------------------------------------------------------
-// Static analysis (code style)
-// ---------------------------------------------------------------------------
 checkstyle {
     toolVersion = '10.21.0'
     configFile = file('config/checkstyle/checkstyle.xml')
     maxWarnings = 0
 }
 
-// ---------------------------------------------------------------------------
-// Testing: split into tag-based test sets
-//   ./gradlew test            -> only @Tag("unit")  tests (fast)
-//   ./gradlew integrationTest -> only @Tag("integration") tests (slow)
-//   ./gradlew check           -> static analysis + both test sets
-// ---------------------------------------------------------------------------
 tasks.named('test', Test) {
     description = 'Runs the fast unit test set (@Tag("unit")).'
     useJUnitPlatform {
         includeTags 'unit'
-        // Use the Jupiter engine directly; the @Suite classes (suite engine) are
-        // kept for IDE / standalone use and must not double-run here.
         includeEngines 'junit-jupiter'
     }
     testLogging {
@@ -77,9 +66,6 @@ tasks.named('check') {
     dependsOn 'integrationTest'
 }
 
-// ---------------------------------------------------------------------------
-// Packaging: produce a runnable JAR
-// ---------------------------------------------------------------------------
 jar {
     manifest {
         attributes(
@@ -90,10 +76,6 @@ jar {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Publishing: push the JAR to GitHub Packages (Maven registry)
-// Credentials are read from the environment (set automatically in CI).
-// ---------------------------------------------------------------------------
 publishing {
     publications {
         maven(MavenPublication) {
